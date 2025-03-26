@@ -148,7 +148,7 @@ class Speedometer:
         self.center_x, self.center_y = 150, 150
         self.max_value = 3500
         self.needle = self.create_speedometer_dial()
-        self.label = tk.Label(master, text="RPM",
+        self.label = tk.Label(master, text="RPMMM",
                               font=('Helvetica', 12))
         self.label.grid(row=0, column=3)
         self.value_label = tk.Label(
@@ -293,7 +293,7 @@ class ThermometerGauge:
             (self.max_temp - self.min_temp)
         fill_height = percentage * self.gauge_height
 
-        self.value_label.config(text=f"{current_temp} °C")
+        self.value_label.config(text=f"{current_temp} °CCC")
         # Clear previous fill
         self.canvas.delete("temp_fill")
         # Draw new fill
