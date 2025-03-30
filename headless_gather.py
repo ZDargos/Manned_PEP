@@ -7,7 +7,7 @@ import time
 import struct
 import os
 
-from database_functions import create_table_for_pdo, store_to_db
+from database_functions import create_table_for_trial, store_data_for_trial
 from Frames_database import get_next_trial_number, create_tables
 import queue
 import threading
