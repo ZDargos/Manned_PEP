@@ -234,7 +234,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error getting next trial number: {e}")
         trial_num = 0
-        create_table_for_trial(conn)
+        create_table_for_trial(conn, trial_num)
 
     print(f"Running telemetry display for trial number: {trial_num}")
 
