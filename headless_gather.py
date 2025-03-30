@@ -7,8 +7,8 @@ import time
 import struct
 import os
 
-from database_functions import create_table_for_trial, store_data_for_trial
-from Frames_database import get_next_trial_number, create_tables
+from database_functions import create_table_for_trial, store_data_for_trial, get_next_trial_number
+
 import queue
 import threading
 import signal
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error getting next trial number: {e}")
         trial_num = 0
-        create_tables(conn)
+        create_table_for_trial(conn)
 
     print(f"Running telemetry display for trial number: {trial_num}")
 
