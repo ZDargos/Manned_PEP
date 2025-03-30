@@ -1,6 +1,6 @@
 import sqlite3
 
-DATABASE_NAME = "/home/pi/Manned_PEP/frames_data.db"
+DATABASE_NAME = "./frames_data.db"
 
 NAME = "frames_data.db"
 
