@@ -28,6 +28,26 @@ value_range_map = {
     (1158, (6, 7)): ("S16", "Motor measurements: DC bus current", "-32768 to 32767", "Adc"),
 }
 
+def list_tables():
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+
+        # Query to get all table names
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+
+        if tables:
+            print("Tables in the database:")
+            for table in tables:
+                print(table[0])
+        else:
+            print("No tables found in the database.")
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def export_trial_data_to_csv(trial_number):
     CSV_FILE_PATH = f"./csv_data/_data_{trial_number}.csv"
@@ -95,4 +115,5 @@ def export_trial_data_to_csv(trial_number):
 
 
 # Example usage
-export_trial_data_to_csv(25)
+list_tables()
+#export_trial_data_to_csv(25)
