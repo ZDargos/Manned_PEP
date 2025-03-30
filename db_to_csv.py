@@ -3,7 +3,7 @@ from maps import format_can_message_csv
 import sqlite3
 import csv
 
-DATABASE_NAME = "frames_data.db"  # Update with the correct path
+DATABASE_NAME = "/home/pi/Manned_PEP_Original_Original/frames_data.db"  # Update with the correct path
 
 # Assuming value_range_map is defined as shown previously
 
