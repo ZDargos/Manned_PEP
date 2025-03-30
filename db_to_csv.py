@@ -149,8 +149,9 @@ def export_sqlite_to_csv(table_name, output_csv):
 db_path = "/mnt/data/frames_data.db"
 table_name = "your_table_name"  # Replace with the actual table name
 output_csv = "./output.csv"
-export_sqlite_to_csv("trial_24", output_csv)
+list_tables()
+export_sqlite_to_csv("trial_25", output_csv)
 
 # Example usage
-#list_tables()
+
 #export_trial_data_to_csv(25)
