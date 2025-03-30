@@ -115,5 +115,5 @@ def export_trial_data_to_csv(trial_number):
 
 
 # Example usage
-list_tables()
-#export_trial_data_to_csv(25)
+#list_tables()
+export_trial_data_to_csv(25)
