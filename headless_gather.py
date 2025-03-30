@@ -230,7 +230,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     trial_num = 0
     try:
-        trial_num = get_next_trial_number(conn)
+        trial_num = get_next_trial_number()
     except Exception as e:
         print(f"Error getting next trial number: {e}")
         trial_num = 0
