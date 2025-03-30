@@ -204,7 +204,7 @@ def database_thread_function(db_queue, trial_number, batch_size=100):
             if msg_data is None:
                 # If there are any messages left in the batch, store them before breaking
                 if batch:
-                    store_data_for_trial(trial_number, batch)
+                    store_data_for_trial(batch, trial_number)
                 break
 
             # Add the message data to the batch
@@ -212,12 +212,12 @@ def database_thread_function(db_queue, trial_number, batch_size=100):
 
             # When the batch size is reached, store the batch and clear it
             if len(batch) >= batch_size:
-                store_data_for_trial(trial_number, batch)
+                store_data_for_trial(batch, trial_number)
                 batch = []  # Reset the batch list
         except queue.Empty:
             # If the queue is empty but there are messages in the batch, store them
             if batch:
-                store_data_for_trial(trial_number, batch)
+                store_data_for_trial(batch, trial_number)
                 batch = []  # Reset the batch list
         except Exception as e:
             print(f"Error in sending to db: {e}")
