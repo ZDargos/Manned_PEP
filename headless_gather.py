@@ -13,7 +13,6 @@ import queue
 import threading
 import signal
 
-from Frames_database import store_frames_to_database
 # Mapping from COB-ID to PDO and its information
 
 # FRAMES_DATABASE = "db/frames_data.db"
