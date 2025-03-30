@@ -36,7 +36,7 @@ def export_trial_data_to_csv(trial_number):
 
     # Fetch all messages for the given trial number, sorted by timestamp
     cursor.execute(
-        "SELECT trial_number, timestamp, frame_id, data FROM frame_data WHERE trial_number=? ORDER BY timestamp ASC",
+        "SELECT trial_number, timestamp, frame_id, data FROM frames_data WHERE trial_number=? ORDER BY timestamp ASC",
         (trial_number,))
     messages = cursor.fetchall()
 
