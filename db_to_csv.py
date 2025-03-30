@@ -36,7 +36,7 @@ def export_trial_data_to_csv(trial_number):
 
     # Fetch all messages for the given trial number, sorted by timestamp
     cursor.execute(
-        "SELECT *",
+        "SELECT * from 25",
         (trial_number,))
     messages = cursor.fetchall()
 
