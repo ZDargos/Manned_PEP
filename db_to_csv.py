@@ -112,8 +112,45 @@ def export_trial_data_to_csv(trial_number):
                         row[desc[1]] = ''
 
                 writer.writerow(row)
+def export_sqlite_to_csv(table_name, output_csv):
+    """
+    Exports data from an SQLite database table to a CSV file.
 
+    :param db_path: Path to the SQLite database file.
+    :param table_name: Name of the table to export.
+    :param output_csv: Path to the output CSV file.
+    """
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+        
+        # Fetch column names
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns = [col[1] for col in cursor.fetchall()]
+        
+        # Fetch data from the table
+        cursor.execute(f"SELECT * FROM {table_name}")
+        rows = cursor.fetchall()
+        
+        # Write to CSV
+        with open(output_csv, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(columns)  # Write headers
+            writer.writerows(rows)  # Write data
+        
+        print(f"Data exported successfully to {output_csv}")
+    except sqlite3.Error as e:
+        print(f"SQLite error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+# Example usage
+db_path = "/mnt/data/frames_data.db"
+table_name = "your_table_name"  # Replace with the actual table name
+output_csv = "./output.csv"
+export_sqlite_to_csv("trial_24", output_csv)
 
 # Example usage
 #list_tables()
-export_trial_data_to_csv(25)
+#export_trial_data_to_csv(25)
