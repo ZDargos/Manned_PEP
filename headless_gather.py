@@ -6,21 +6,31 @@ from canlib import canlib, CanlibException
 import time
 import struct
 import os
-
+import signal
+import sys
 from database_functions import create_table_for_trial, store_data_for_trial, get_next_trial_number
-
 import queue
 import threading
-import signal
+import logging
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('data_collection.log'),
+        logging.StreamHandler()
+    ]
+)
 
 # Mapping from COB-ID to PDO and its information
-
-# FRAMES_DATABASE = "db/frames_data.db"
 FRAMES_DATABASE = "./frames_data.db"
-
 
 can_queue = queue.Queue()
 running = True
+POWER_THRESHOLD = 100  # Adjust this threshold based on your motor's normal voltage
+POWER_OFF_THRESHOLD = 50  # Voltage below this indicates motor is off
+POWER_CHECK_INTERVAL = 1.0  # How often to check for power status (seconds)
 
 value_range_map = {
     # COB-ID, Bytes : (Data Type, Description, Value Range, Units)
@@ -146,125 +156,155 @@ def is_device_connected(channel):
         return False
 
 
-def read_can_messages(trial_number, can_queue):
-    # Initialize and open the channel
-    global running
-    channel = 0
-
-    # Wait for the CAN device to be connected
-    device_connected = False
-    timeout = time.time() + 60  # 1 minute from now
-    while not device_connected and time.time() < timeout:
-        device_connected = is_device_connected(channel)
-        if not device_connected:
-            print("Waiting for CAN device to be connected...")
-            time.sleep(5)  # Wait for 5 seconds before checking again
-
-    if not device_connected:
-        print("CAN device not detected, exiting.")
-        running = False
-        return
-
-    # Now that the device is connected, proceed with the rest of the function
+def detect_power(channel):
+    """Monitor DC Bus Voltage to detect when motor is powered"""
+    consecutive_readings = 0
+    required_readings = 3  # Need 3 consecutive readings above threshold
+    
     with canlib.openChannel(channel, canlib.canOPEN_ACCEPT_VIRTUAL) as ch:
         ch.setBusOutputControl(canlib.canDRIVER_NORMAL)
         ch.setBusParams(canlib.canBITRATE_100K)
         ch.busOn()
+        
+        while running:
+            try:
+                msg = ch.read()
+                if msg.id == 390:  # Message ID for DC Bus Voltage
+                    voltage = struct.unpack('<h', msg.data[6:8])[0]  # Extract voltage from bytes 6-7
+                    logging.info(f"Current voltage: {voltage}")
+                    
+                    if voltage > POWER_THRESHOLD:
+                        consecutive_readings += 1
+                        if consecutive_readings >= required_readings:
+                            logging.info(f"Motor power detected! Voltage: {voltage}")
+                            return True
+                    else:
+                        consecutive_readings = 0
+                        
+                time.sleep(POWER_CHECK_INTERVAL)
+            except canlib.CanNoMsg:
+                time.sleep(POWER_CHECK_INTERVAL)
+            except KeyboardInterrupt:
+                break
+        ch.busOff()
+    return False
+
+
+def detect_power_off(channel):
+    """Monitor DC Bus Voltage to detect when motor is turned off"""
+    consecutive_readings = 0
+    required_readings = 3  # Need 3 consecutive readings below threshold
+    
+    with canlib.openChannel(channel, canlib.canOPEN_ACCEPT_VIRTUAL) as ch:
+        ch.setBusOutputControl(canlib.canDRIVER_NORMAL)
+        ch.setBusParams(canlib.canBITRATE_100K)
+        ch.busOn()
+        
+        while running:
+            try:
+                msg = ch.read()
+                if msg.id == 390:  # Message ID for DC Bus Voltage
+                    voltage = struct.unpack('<h', msg.data[6:8])[0]
+                    logging.info(f"Current voltage: {voltage}")
+                    
+                    if voltage < POWER_OFF_THRESHOLD:
+                        consecutive_readings += 1
+                        if consecutive_readings >= required_readings:
+                            logging.info(f"Motor power off detected! Voltage: {voltage}")
+                            return True
+                    else:
+                        consecutive_readings = 0
+                        
+                time.sleep(POWER_CHECK_INTERVAL)
+            except canlib.CanNoMsg:
+                time.sleep(POWER_CHECK_INTERVAL)
+            except KeyboardInterrupt:
+                break
+        ch.busOff()
+    return False
+
+
+def read_can_messages(trial_number, can_queue):
+    # Initialize and open the channel
+    global running
+    channel = 0
+    
+    # Wait for motor power
+    logging.info("Waiting for motor power...")
+    if not detect_power(channel):
+        logging.info("No motor power detected. Exiting.")
+        return
+
+    # Now that power is detected, proceed with data collection
+    with canlib.openChannel(channel, canlib.canOPEN_ACCEPT_VIRTUAL) as ch:
+        ch.setBusOutputControl(canlib.canDRIVER_NORMAL)
+        ch.setBusParams(canlib.canBITRATE_100K)
+        ch.busOn()
+        
+        logging.info(f"Starting data collection for trial {trial_number}")
         while running:
             try:
                 msg = ch.read()
                 pdo_label = pdo_map.get(msg.id, "Unknown_PDO")
                 msg_data = format_can_message(msg)
-
                 can_queue.put(msg_data)
-
+                
+                # Check for power off
+                if detect_power_off(channel):
+                    logging.info("Motor power off detected, ending trial")
+                    break
+                    
             except canlib.CanNoMsg:
-
-                pass  # No new message yet
+                pass
             except KeyboardInterrupt:
-                break  # Exit the loop on Ctrl+C
+                break
         ch.busOff()
 
-    # Function to create the UI layout for the variable display
 
-
-def signal_handler(sig, frame):
+def main():
     global running
-    print('Exiting, signal received:', sig)
-    running = False
-
-
-def database_thread_function(db_queue, trial_number, batch_size=100):
-    batch = []
-    while True:
+    
+    def signal_handler(signum, frame):
+        global running
+        print("\nStopping data collection...")
+        running = False
+    
+    # Set up signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Create database directory if it doesn't exist
+    os.makedirs(os.path.dirname(FRAMES_DATABASE), exist_ok=True)
+    
+    while running:
         try:
-            msg_data = db_queue.get(block=True, timeout=1)
-
-            # Check for sentinel value to break the loop
-            if msg_data is None:
-                # If there are any messages left in the batch, store them before breaking
-                if batch:
+            # Get next trial number
+            trial_number = get_next_trial_number()
+            
+            # Create table for this trial
+            create_table_for_trial(trial_number)
+            
+            # Start data collection
+            read_can_messages(trial_number, can_queue)
+            
+            # Process collected data
+            batch = []
+            while not can_queue.empty():
+                msg_data = can_queue.get()
+                batch.append(msg_data)
+                if len(batch) >= 50:  # Process in batches of 50
                     store_data_for_trial(batch, trial_number)
-                break
-
-            # Add the message data to the batch
-            batch.append(msg_data)
-
-            # When the batch size is reached, store the batch and clear it
-            if len(batch) >= batch_size:
-                store_data_for_trial(batch, trial_number)
-                batch = []  # Reset the batch list
-        except queue.Empty:
-            # If the queue is empty but there are messages in the batch, store them
+                    batch = []
+            
+            # Store any remaining messages
             if batch:
                 store_data_for_trial(batch, trial_number)
-                batch = []  # Reset the batch list
+                
         except Exception as e:
-            print(f"Error in sending to db: {e}")
+            print(f"Error in main loop: {e}")
+            time.sleep(5)  # Wait before retrying
+            continue
 
 
 if __name__ == "__main__":
-    print("starting new session")
-
-    conn = sqlite3.connect(FRAMES_DATABASE)
-    signal.signal(signal.SIGINT, signal_handler)
-    trial_num = 0
-    try:
-        trial_num = get_next_trial_number()
-    except Exception as e:
-        print(f"Error getting next trial number: {e}")
-        trial_num = 0
-        create_table_for_trial(conn, trial_num)
-
-    print(f"Running telemetry display for trial number: {trial_num}")
-
-    db_queue = queue.Queue()
-    db_thread = threading.Thread(target=database_thread_function,
-                                 args=(db_queue, trial_num))
-    db_thread.start()
-    # Set up the queue and start the CAN reading thread
-    can_queue = queue.Queue()
-    can_thread = threading.Thread(
-        target=read_can_messages, args=(trial_num, can_queue))
-    can_thread.daemon = True
-    can_thread.start()
-
-    # Loop to keep the script running and handle CAN messages
-    try:
-        while running:
-            try:
-                msg_data = can_queue.get(timeout=1)  # Adjust timeout as needed
-                db_queue.put(msg_data)
-                # You can process the formatted data here
-                # For example, log it to a file or print to console
-            except queue.Empty:
-                continue  # No message received, loop back and wait again
-    except KeyboardInterrupt:
-        print("Interrupted by user, stopping.")
-    finally:
-        running = False
-        db_queue.put(None)
-        db_thread.join()
-        if can_thread.is_alive():
-            can_thread.join()
-        print(f"Finished telemetry display for trial number: {trial_num}")
+    main()
