@@ -2,8 +2,17 @@
 from maps import format_can_message_csv
 import sqlite3
 import csv
+from datetime import datetime
+import os
 
-DATABASE_NAME = "/home/pi/Manned_PEP/frames_data.db"  # Update with the correct path
+def get_database_path():
+    """Creates a new database file with date-based naming"""
+    date_str = datetime.now().strftime("%Y%m%d")
+    db_dir = "/home/pi/Manned_PEP/data"
+    os.makedirs(db_dir, exist_ok=True)
+    return os.path.join(db_dir, f"boat_data_{date_str}.db")
+
+DATABASE_NAME = get_database_path()
 
 # Assuming value_range_map is defined as shown previously
 
@@ -155,3 +164,68 @@ export_sqlite_to_csv("trial_25", output_csv)
 # Example usage
 
 #export_trial_data_to_csv(25)
+
+def create_new_trial_table():
+    """Creates a new table for the current trial with timestamp"""
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    
+    # Create table with timestamp in name
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    table_name = f"trial_{timestamp}"
+    
+    cursor.execute(f'''
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        trial_number INTEGER,
+        timestamp REAL,
+        frame_id INTEGER,
+        data BLOB
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    return table_name
+
+def auto_export_trial_data(table_name):
+    """Automatically exports trial data to CSV with proper naming"""
+    # Create CSV directory if it doesn't exist
+    csv_dir = "./csv_data"
+    os.makedirs(csv_dir, exist_ok=True)
+    
+    # Generate CSV filename based on table name
+    csv_filename = f"{table_name}.csv"
+    csv_path = os.path.join(csv_dir, csv_filename)
+    
+    # Extract trial number from table name (assuming format trial_YYYYMMDD_HHMMSS)
+    trial_number = table_name.split('_')[1]
+    
+    # Export the data
+    export_trial_data_to_csv(trial_number)
+    print(f"Data exported to {csv_path}")
+
+def cleanup_old_data(days_to_keep=30):
+    """Removes database files older than specified days"""
+    db_dir = "/home/pi/Manned_PEP/data"
+    current_time = datetime.now()
+    
+    for filename in os.listdir(db_dir):
+        if filename.startswith("boat_data_") and filename.endswith(".db"):
+            file_path = os.path.join(db_dir, filename)
+            file_time = datetime.fromtimestamp(os.path.getctime(file_path))
+            
+            if (current_time - file_time).days > days_to_keep:
+                try:
+                    os.remove(file_path)
+                    print(f"Removed old database: {filename}")
+                except Exception as e:
+                    print(f"Error removing {filename}: {e}")
+
+# Example usage
+if __name__ == "__main__":
+    # Create a new trial table
+    current_table = create_new_trial_table()
+    print(f"Created new trial table: {current_table}")
+    
+    # Clean up old data (keep last 30 days)
+    cleanup_old_data()
