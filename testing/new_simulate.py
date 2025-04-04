@@ -7,6 +7,7 @@ import threading
 import sys
 from maps import format_can_message
 import math
+import serial
 print("Script started")
 # Constants for database access
 FRAME_DATABASE = "frames_data.db"
