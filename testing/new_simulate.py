@@ -54,6 +54,8 @@ class App(tk.Frame):
         super().__init__(master)
         self.master = master
         self.pack()
+        self.ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        self.ser.reset_input_buffer()
         # Maximizes the window keeping taskbar accessible
 
         screen_width = self.master.winfo_screenwidth()
@@ -87,7 +89,9 @@ class App(tk.Frame):
         try:
             # print("Formatted message received in update_ui:",
             #       formatted_msg)  # Debugging print
-
+            if self.ser.in_waiting > 0:
+                line = ser.readline().decode('utf-8').rstrip()
+                print(line)
             self.can_display.update_display(formatted_msg)
             data_values = formatted_msg.get('data_values', {})
             timestamp = formatted_msg.get('timestamp', {})
