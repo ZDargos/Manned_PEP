@@ -305,6 +305,7 @@ class ThermometerGauge:
 
 class CoolantTemp:
     def __init__(self, master):
+        self.coolanttemp.lift()
         self.master = master
         self.canvas = tk.Canvas(master, width=90, height=310)
         # Adjust grid placement as needed
