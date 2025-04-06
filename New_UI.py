@@ -294,7 +294,7 @@ class ThermometerGauge:
             (self.max_temp - self.min_temp)
         fill_height = percentage * self.gauge_height
 
-        self.value_label.config(text=f"{current_temp} °CCC")
+        self.value_label.config(text=f"{current_temp} °C")
         # Clear previous fill
         self.canvas.delete("temp_fill")
         # Draw new fill
@@ -305,14 +305,13 @@ class ThermometerGauge:
 
 class CoolantTemp:
     def __init__(self, master):
-        self.coolanttemp.lift()
         self.master = master
         self.canvas = tk.Canvas(master, width=90, height=310)
         # Adjust grid placement as needed
-        self.canvas.grid(row=1, column=8, padx=20, pady=5)
+        self.canvas.grid(row=3, column=8, padx=20, pady=5)
         self.value_label = tk.Label(
             master, text="0 °C", font=('Helvetica', 10))
-        self.value_label.grid(row=2, column=8)
+        self.value_label.grid(row=4, column=8)
         self.min_temp = 0  # Minimum temperature value
         self.max_temp = 140  # Maximum temperature value
         self.gauge_height = 320
@@ -352,7 +351,7 @@ class CoolantTemp:
             (self.max_temp - self.min_temp)
         fill_height = percentage * self.gauge_height
 
-        self.value_label.config(text=f"{current_temp} °CCC")
+        self.value_label.config(text=f"{current_temp} °C")
         # Clear previous fill
         self.canvas.delete("temp_fill")
         # Draw new fill

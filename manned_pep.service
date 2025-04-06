@@ -1,0 +1,14 @@
+[Unit]
+Description=Manned PEP Data Collection Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Manned_PEP
+ExecStart=/bin/bash /home/pi/Manned_PEP/start_data_collection.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target 
