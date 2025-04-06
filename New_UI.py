@@ -4,6 +4,7 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import datetime
+import serial
 
 
 class CANVariableDisplay:
@@ -246,6 +247,63 @@ class VoltageGraph:
 
 
 class ThermometerGauge:
+    def __init__(self, master):
+        self.master = master
+        self.canvas = tk.Canvas(master, width=90, height=310)
+        # Adjust grid placement as needed
+        self.canvas.grid(row=1, column=8, padx=20, pady=5)
+        self.value_label = tk.Label(
+            master, text="0 °C", font=('Helvetica', 10))
+        self.value_label.grid(row=2, column=8)
+        self.min_temp = 0  # Minimum temperature value
+        self.max_temp = 140  # Maximum temperature value
+        self.gauge_height = 320
+        self.gauge_width = 20
+        self.gauge_x = 20
+        self.gauge_y = 5
+        self.draw_gauge_background()
+
+    def draw_gauge_background(self):
+        # Draw the outer rectangle
+        self.canvas.create_rectangle(self.gauge_x, self.gauge_y,
+                                     self.gauge_x + self.gauge_width, self.gauge_y + self.gauge_height,
+                                     outline="black")
+
+        # Draw ticks and labels
+        # Adjust step for fewer or more ticks
+        for temp in range(self.min_temp, self.max_temp + 1, 25):
+            percentage = (temp - self.min_temp) / \
+                (self.max_temp - self.min_temp)
+            y = self.gauge_y + self.gauge_height - \
+                (percentage * self.gauge_height)
+
+            # Ticks
+            self.canvas.create_line(
+                self.gauge_x, y, self.gauge_x + 10, y, fill="black")
+            self.canvas.create_line(self.gauge_x + self.gauge_width -
+                                    10, y, self.gauge_x + self.gauge_width, y, fill="black")
+
+            # Labels
+            self.canvas.create_text(
+                self.gauge_x + self.gauge_width + 10, y, text=f"{temp}°C", anchor="w")
+
+    def update_gauge(self, current_temp):
+        # Validate current temperature
+        current_temp = max(self.min_temp, min(self.max_temp, current_temp))
+        percentage = (current_temp - self.min_temp) / \
+            (self.max_temp - self.min_temp)
+        fill_height = percentage * self.gauge_height
+
+        self.value_label.config(text=f"{current_temp} °CCC")
+        # Clear previous fill
+        self.canvas.delete("temp_fill")
+        # Draw new fill
+        self.canvas.create_rectangle(self.gauge_x + 1, self.gauge_y + self.gauge_height - fill_height,
+                                     self.gauge_x + self.gauge_width - 1, self.gauge_y + self.gauge_height,
+                                     fill="red", tags="temp_fill")
+
+
+class CoolantTemp:
     def __init__(self, master):
         self.master = master
         self.canvas = tk.Canvas(master, width=90, height=310)
