@@ -1,6 +1,8 @@
 import sqlite3
+import os
 
-DATABASE_NAME = "./frames_data.db"
+# Use a relative path for the database
+DATABASE_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frames_data.db")
 
 NAME = "frames_data.db"
 

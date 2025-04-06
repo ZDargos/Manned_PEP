@@ -14,20 +14,27 @@ import queue
 import threading
 import logging
 
+# Create necessary directories with proper permissions
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+CSV_DIR = os.path.join(BASE_DIR, "csv_data")
+
+# Create directories if they don't exist
+os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(CSV_DIR, exist_ok=True)
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('data_collection.log'),
+        logging.FileHandler(os.path.join(LOG_DIR, 'data_collection.log')),
         logging.StreamHandler()
     ]
 )
 
-# Database and CSV configuration
-FRAMES_DATABASE = "./frames_data.db"
-CSV_DIR = "./csv_data"
-os.makedirs(CSV_DIR, exist_ok=True)
+# Database configuration
+FRAMES_DATABASE = os.path.join(BASE_DIR, "frames_data.db")
 
 # CAN configuration
 can_queue = queue.Queue()

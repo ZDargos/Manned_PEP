@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Navigate to the correct directory
-cd /home/pi/Manned_PEP
+cd /home/pi/Manned_PEP_Original_Original
 
 # Create necessary directories if they don't exist
+mkdir -p /data
 mkdir -p csv_data
 mkdir -p logs
 
