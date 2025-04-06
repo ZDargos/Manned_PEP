@@ -2,7 +2,7 @@ import sqlite3
 import time
 import tkinter as tk
 from collections import namedtuple
-from New_UI import Graph, CANVariableDisplay, Speedometer, CurrentMeter, VoltageGraph
+from New_UI import Graph, CANVariableDisplay, Speedometer, CurrentMeter, VoltageGraph, CoolantTemp
 import threading
 import sys
 from maps import format_can_message
@@ -70,6 +70,7 @@ class App(tk.Frame):
         self.can_display = CANVariableDisplay(self)
         self.speedometer = Speedometer(self)
         self.currentmeter = CurrentMeter(self)
+        self.coolanttemp = CoolantTemp(self)
         self.graph = Graph(self)
         self.voltagegraph = VoltageGraph(self)
         self.speeds = []
@@ -87,19 +88,53 @@ class App(tk.Frame):
             time.sleep(0.001)
 
     def update_ui(self, formatted_msg):
-        try:
-            # print("Formatted message received in update_ui:",
-            #       formatted_msg)  # Debugging print
-            if self.ser.in_waiting > 0:
-                line = ser.readline().decode('utf-8').rstrip()
-                print(line)
-            self.can_display.update_display(formatted_msg)
-            data_values = formatted_msg.get('data_values', {})
-            timestamp = formatted_msg.get('timestamp', {})
-            speed = data_values.get('Actual speed', (None,))[0]
-            torque = data_values.get('Actual Torque', (None,))[0]  # Ass
-            current = data_values.get(
-                'Motor measurements: DC bus current', (0,))[0]*0.004
+    try:
+        # Read from the serial port if data is available
+        if self.ser.in_waiting > 0:
+            # Use self.ser instead of ser (fixing the undefined name issue)
+            line = self.ser.readline().decode('utf-8').rstrip()
+            print("Serial input:", line)
+            # Assume the Arduino sends a numeric temperature in Celsius.
+            try:
+                temperature = float(line)
+                # Update the coolant temperature gauge widget
+                self.coolanttemp.update_gauge(temperature)
+            except ValueError:
+                print("Could not convert serial input to float:", line)
+
+        # Continue updating other UI elements based on the CAN message...
+        self.can_display.update_display(formatted_msg)
+        data_values = formatted_msg.get('data_values', {})
+        timestamp = formatted_msg.get('timestamp', {})
+        speed = data_values.get('Actual speed', (None,))[0]
+        torque = data_values.get('Actual Torque', (None,))[0]
+        # Example conversion: raw current * scaling factor
+        current = data_values.get('Motor measurements: DC bus current', (0,))[0] * 0.004
+        voltage = data_values.get('Motor voltage control: Idfiltered', (0,))[0]
+
+        # Update speedometer, current meter, and voltage graph as before
+        if torque is not None:
+            torque = abs(torque * 0.0025)
+            self.torques.append(torque)
+            if len(self.torques) == 15:
+                avg_torque = sum(self.torques) / len(self.torques)
+                self.graph.update_graph(avg_torque, timestamp)
+                self.torques.clear()
+
+        self.currentmeter.update_dial(current)
+
+        if speed is not None:
+            speed = abs(speed * 0.03)
+            self.speedometer.update_dial(speed)
+            self.speeds.append(speed)
+            if len(self.speeds) == 15:
+                avg_speed = sum(self.speeds) / len(self.speeds)
+                self.voltagegraph.update_graph(avg_speed, timestamp)
+                self.speeds.clear()
+
+    except Exception as e:
+        print("Error in update_ui:", e)
+
 
     # 'Motor measurements: DC bus current'
     # 'RMS motor Current'
